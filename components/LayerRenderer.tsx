@@ -414,20 +414,12 @@ const LayerItem: React.FC<{
   const getAsset = useCallback((id: string) => {
     // Check pre-resolved assets from server first
     if (resolvedAssets?.[id]) {
-      // SVG marker: asset has content but no public URL
-      // For link resolution, this triggers '#no-svg-url' return
-      // For image rendering, we need to get the actual content from store
-      if (resolvedAssets[id] === '#svg-content') {
-        // Check if actual SVG content is in the store (already loaded)
-        const storeAsset = getAssetFromStore(id);
-        if (storeAsset?.content) {
-          return storeAsset; // Return full asset with actual SVG content
-        }
-        // Not in store - return marker for link resolution (will show #no-svg-url)
-        // Image rendering will show placeholder until asset loads
-        return { public_url: null, content: '#svg-marker', _isSvgMarker: true };
+      const value = resolvedAssets[id];
+      // Inline SVG content (starts with <) — return as content, no public URL
+      if (value.startsWith('<')) {
+        return { public_url: null, content: value };
       }
-      return { public_url: resolvedAssets[id] };
+      return { public_url: value };
     }
     // Fall back to store (may trigger async fetch)
     return getAssetFromStore(id);
@@ -1669,18 +1661,14 @@ const LayerItem: React.FC<{
             );
             const assetId = translatedAssetId || originalAssetId;
 
-            // Check assetsById first (reactive) then getAsset (may trigger fetch)
             const asset = assetsById[assetId] || getAsset(assetId);
-            // Skip SVG marker (not actual content)
-            iconHtml = (asset?.content && !(asset as any)._isSvgMarker) ? asset.content : '';
+            iconHtml = asset?.content || '';
           }
         } else if (isFieldVariable(iconSrc)) {
           const resolvedValue = resolveFieldValue(iconSrc, collectionLayerData, pageCollectionItemData, effectiveLayerDataMap);
           if (resolvedValue && typeof resolvedValue === 'string') {
-            // Try to get as asset first (field contains asset ID)
             const asset = assetsById[resolvedValue] || getAsset(resolvedValue);
-            // Use asset content if available (not marker), otherwise treat as raw SVG code
-            iconHtml = (asset?.content && !(asset as any)._isSvgMarker) ? asset.content : resolvedValue;
+            iconHtml = asset?.content || resolvedValue;
           }
         }
       }

@@ -406,17 +406,47 @@ export function collectLayerAssetIds(
     return undefined;
   };
 
+  /** Scan component overrides directly for asset IDs. */
+  const scanOverrideAssets = (overrides: Layer['componentOverrides'], ancestors: Set<string>): void => {
+    if (!overrides) return;
+    if (overrides.text) {
+      for (const val of Object.values(overrides.text)) {
+        const content = (val as any)?.data?.content;
+        if (content && typeof content === 'object') {
+          scanRichTextMarks(content);
+          scanRichTextComponents(content, ancestors);
+        }
+      }
+    }
+    for (const category of ['image', 'icon', 'audio', 'video'] as const) {
+      const overrideMap = overrides[category];
+      if (!overrideMap) continue;
+      for (const val of Object.values(overrideMap)) {
+        const v = val as any;
+        addAssetVar(v?.src);
+        addAssetVar(v?.poster);
+      }
+    }
+    if (overrides.link) {
+      for (const val of Object.values(overrides.link)) {
+        const v = val as any;
+        if (v?.asset?.id) assetIds.add(v.asset.id);
+      }
+    }
+  };
+
   /** Scan Tiptap JSON for embedded richTextComponent nodes and collect their asset IDs. */
   const scanRichTextComponents = (node: any, ancestors: Set<string>): void => {
     if (!node || typeof node !== 'object') return;
     if (node.type === 'richTextComponent' && node.attrs?.componentId) {
       const cid = node.attrs.componentId as string;
       if (!ancestors.has(cid)) {
+        const childAncestors = new Set(ancestors);
+        childAncestors.add(cid);
+        const overrides = node.attrs.componentOverrides ?? undefined;
+        scanOverrideAssets(overrides, childAncestors);
         const comp = components.find(c => c.id === cid);
         if (comp?.layers?.length) {
-          const childAncestors = new Set(ancestors);
-          childAncestors.add(cid);
-          const overrides = node.attrs.componentOverrides ?? undefined;
           const resolved = applyComponentOverrides(comp.layers, overrides, comp.variables);
           resolved.forEach(l => scanLayer(l, childAncestors));
           scanVariableDefaults(comp.variables, childAncestors);
@@ -482,27 +512,7 @@ export function collectLayerAssetIds(
     }
 
     // Component override values
-    if (layer.componentOverrides) {
-      const ov = layer.componentOverrides;
-      if (ov.text) {
-        for (const val of Object.values(ov.text)) {
-          const content = (val as any)?.data?.content;
-          if (content && typeof content === 'object') {
-            scanRichTextMarks(content);
-            scanRichTextComponents(content, ancestors ?? new Set<string>());
-          }
-        }
-      }
-      for (const category of ['image', 'icon', 'audio', 'video'] as const) {
-        const overrideMap = ov[category];
-        if (!overrideMap) continue;
-        for (const val of Object.values(overrideMap)) {
-          const v = val as any;
-          addAssetVar(v?.src);
-          addAssetVar(v?.poster);
-        }
-      }
-    }
+    scanOverrideAssets(layer.componentOverrides, ancestors ?? new Set<string>());
 
     // Component variable defaults
     if (layer.componentId) {

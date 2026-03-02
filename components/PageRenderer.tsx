@@ -240,7 +240,7 @@ export default async function PageRenderer({
         } else if (asset.public_url) {
           resolvedAssets[id] = asset.public_url;
         } else if (asset.content) {
-          resolvedAssets[id] = '#svg-content';
+          resolvedAssets[id] = asset.content;
         }
       }
     } catch (error) {
