@@ -46,6 +46,7 @@ const CollectionItemSheet = lazy(() => import('../components/CollectionItemSheet
 const FileManagerDialog = lazy(() => import('../components/FileManagerDialog'));
 const KeyboardShortcutsDialog = lazy(() => import('../components/KeyboardShortcutsDialog'));
 const CreateComponentDialog = lazy(() => import('../components/CreateComponentDialog'));
+import RenameLayerDialog from '../components/RenameLayerDialog';
 const DragPreviewPortal = lazy(() => import('@/components/DragPreviewPortal'));
 
 // Collaboration components (lazy-loaded)
@@ -165,6 +166,10 @@ export default function YCodeBuilder({ children }: YCodeBuilderProps = {} as YCo
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>(
     urlState.view || 'desktop'
   );
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [renameDialogLayerId, setRenameDialogLayerId] = useState<string | null>(null);
+  const [renameDialogName, setRenameDialogName] = useState('');
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastLayersByPageRef = useRef<Map<string, string>>(new Map());
   const previousPageIdRef = useRef<string | null>(null);
@@ -219,6 +224,19 @@ export default function YCodeBuilder({ children }: YCodeBuilderProps = {} as YCo
       setDraftLayers(currentPageId, newLayers);
     }
   }, [editingComponentId, currentPageId, setDraftLayers]);
+
+  const handleConfirmRename = useCallback((newName: string | null) => {
+    if (!renameDialogLayerId) return;
+
+    const value = newName || undefined;
+    if (editingComponentId) {
+      updateCurrentLayers(
+        updateLayerProps(getCurrentLayers(), renameDialogLayerId, { customName: value })
+      );
+    } else if (currentPageId) {
+      updateLayer(currentPageId, renameDialogLayerId, { customName: value });
+    }
+  }, [renameDialogLayerId, editingComponentId, currentPageId, updateLayer, getCurrentLayers, updateCurrentLayers]);
 
   // Check if Supabase is configured, redirect to setup if not
   const [supabaseConfigured, setSupabaseConfigured] = useState<boolean | null>(null);
@@ -1128,8 +1146,8 @@ export default function YCodeBuilder({ children }: YCodeBuilderProps = {} as YCo
           return;
         }
 
-        // Escape - Select parent layer
-        if (e.key === 'Escape' && (currentPageId || editingComponentId) && selectedLayerId) {
+        // Escape - Select parent layer (skip if a dialog is open)
+        if (e.key === 'Escape' && (currentPageId || editingComponentId) && selectedLayerId && !document.querySelector('[role="dialog"]')) {
           e.preventDefault();
 
           const layers = getCurrentLayers();
@@ -1445,6 +1463,19 @@ export default function YCodeBuilder({ children }: YCodeBuilderProps = {} as YCo
               }
             }
           }
+        }
+
+        // F2 - Rename selected layer
+        if (e.key === 'F2' && !isInputFocused && (currentPageId || editingComponentId) && selectedLayerId && selectedLayerId !== 'body') {
+          e.preventDefault();
+          const layers = getCurrentLayers();
+          const layer = findLayerById(layers, selectedLayerId);
+          if (layer) {
+            setRenameDialogLayerId(selectedLayerId);
+            setRenameDialogName(layer.customName || layer.name || '');
+            setIsRenameDialogOpen(true);
+          }
+          return;
         }
 
         // Delete: Delete or Backspace (supports multi-select)
@@ -2002,6 +2033,14 @@ export default function YCodeBuilder({ children }: YCodeBuilderProps = {} as YCo
         />
       </Suspense>
     )}
+
+    {/* Rename Layer Dialog */}
+    <RenameLayerDialog
+      open={isRenameDialogOpen}
+      onOpenChange={setIsRenameDialogOpen}
+      onConfirm={handleConfirmRename}
+      currentName={renameDialogName}
+    />
 
     {/* Toast notifications */}
     <Toaster />

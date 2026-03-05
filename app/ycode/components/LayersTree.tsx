@@ -85,6 +85,11 @@ function getLayerDisplayLabel(
   },
   breakpoint?: Breakpoint
 ): string {
+  // customName always takes priority (user-defined rename)
+  if (layer.customName) {
+    return layer.customName;
+  }
+
   // For text layers, try to show the actual text content
   if (layer.name === 'text' && layer.variables?.text) {
     const textVar = layer.variables.text as { type: string; data?: { content?: any } };
