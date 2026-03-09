@@ -573,23 +573,25 @@ export default function EffectControls({ layer, onLayerUpdate, activeTextStyleKe
                   </Popover>
 
                   {shadows.map((shadow) => (
-                    <div
+                    <Button
                       key={shadow.id}
-                      className="bg-secondary/50 rounded-lg flex justify-between items-center p-2 cursor-pointer hover:bg-secondary/70 transition-colors"
+                      variant="input"
                       onClick={() => handleEditShadow(shadow.id)}
                     >
                       <Label variant="muted" className="cursor-pointer">{getShadowDisplayName(shadow)}</Label>
-                      <Button
-                        variant="outline"
-                        className="!size-4 !p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveShadow(shadow.id);
-                        }}
-                      >
-                        <Icon name="x" className="size-2" />
-                      </Button>
-                    </div>
+                      <div className="ml-auto -mr-1.5">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveShadow(shadow.id);
+                          }}
+                        >
+                          <Icon name="x" />
+                        </Button>
+                      </div>
+                    </Button>
                   ))}
 
                   {/*<Select value={boxShadow || 'none'} onValueChange={handleBoxShadowChange}>*/}
