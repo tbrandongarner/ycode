@@ -1876,7 +1876,7 @@ export default function ColorPicker({
       )}
 
       <PopoverContent
-        className="w-56 p-2 pb-0 relative z-50"
+        className={cn('w-56 p-2 relative z-50', activeTab !== 'image' && 'pb-0')}
         align="end"
         collisionPadding={16}
         onKeyDown={handleKeyDown}
