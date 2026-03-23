@@ -53,7 +53,6 @@ const LeftSidebar = React.memo(function LeftSidebar({
 }: LeftSidebarProps) {
   const { sidebarTab } = useEditorUrl();
   const [showElementLibrary, setShowElementLibrary] = useState(false);
-  const [elementLibraryTab, setElementLibraryTab] = useState<'elements' | 'layouts' | 'components'>('elements');
   const [assetMessage, setAssetMessage] = useState<string | null>(null);
 
   // Optimize store subscriptions - scoped to current page only
@@ -103,9 +102,7 @@ const LeftSidebar = React.memo(function LeftSidebar({
       const tab = customEvent.detail?.tab;
 
       if (tab) {
-        setElementLibraryTab(tab);
         setShowElementLibrary(true);
-        // Switch to Layers tab so the element library context is correct
         setActiveSidebarTab('layers');
       } else {
         setShowElementLibrary((prev) => !prev);
@@ -372,17 +369,14 @@ const LeftSidebar = React.memo(function LeftSidebar({
         </div>
       </div>
 
-      {/* Element Library Slide-Out (lazy loaded) */}
-      {showElementLibrary && (
-        <Suspense fallback={null}>
-          <ElementLibrary
-            isOpen={showElementLibrary}
-            onClose={() => setShowElementLibrary(false)}
-            defaultTab={elementLibraryTab}
-            liveLayerUpdates={liveLayerUpdates}
-          />
-        </Suspense>
-      )}
+      {/* Element Library Slide-Out (lazy loaded, always mounted to preserve state) */}
+      <Suspense fallback={null}>
+        <ElementLibrary
+          isOpen={showElementLibrary}
+          onClose={() => setShowElementLibrary(false)}
+          liveLayerUpdates={liveLayerUpdates}
+        />
+      </Suspense>
     </>
   );
 });
