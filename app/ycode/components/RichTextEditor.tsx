@@ -826,6 +826,11 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(({
     return null;
   }
 
+  // Check if the link button should appear active (text link mark OR image with link)
+  const selectedNode = editor.state.doc.nodeAt(editor.state.selection.from);
+  const isLinkActive = editor.isActive('richTextLink')
+    || (selectedNode?.type.name === 'richTextImage' && !!selectedNode.attrs.link);
+
   const handleFieldSelect = (fieldId: string, relationshipPath: string[], source?: FieldSourceType, layerId?: string) => {
     const field = fields.find(f => f.id === fieldId);
     addFieldVariableInternal({
@@ -904,7 +909,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(({
                 trigger={
                   <ToggleGroupItem
                     value="link"
-                    data-state={editor.isActive('richTextLink') ? 'on' : 'off'}
+                    data-state={isLinkActive ? 'on' : 'off'}
                     asChild
                   >
                     <button
@@ -1358,7 +1363,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    className={cn('size-6!', editor.isActive('richTextLink') && 'bg-accent')}
+                    className={cn('size-6!', isLinkActive && 'bg-accent')}
                     disabled={disabled}
                     title="Link"
                   >

@@ -120,27 +120,54 @@ function parseInlineNodes(html: string): TipTapNode[] {
   return nodes.filter(n => n.text);
 }
 
-/** Extract src and alt from an <img> tag and return a richTextImage node */
-function parseImgTag(imgHtml: string): TipTapNode | null {
+/** Extract src/alt from an <img> tag (or <a><img></a> wrapper) and return a richTextImage node */
+function parseImgTag(html: string, link?: { href: string; target?: string | null }): TipTapNode | null {
+  // When the html contains an <a> wrapper, extract the <img> portion for src/alt
+  const imgTagMatch = html.match(/<img\s[^>]*\/?>/i);
+  const imgHtml = imgTagMatch ? imgTagMatch[0] : html;
+
   const srcMatch = imgHtml.match(/src=["']([^"']+)["']/i);
   if (!srcMatch) return null;
   const altMatch = imgHtml.match(/alt=["']([^"']*)["']/i);
+
+  const linkSettings = link?.href
+    ? { type: 'url', url: { type: 'dynamic_text', data: { content: link.href } }, target: link.target || undefined }
+    : null;
+
   return {
     type: 'richTextImage',
-    attrs: { src: srcMatch[1], alt: altMatch?.[1] || null, assetId: null },
+    attrs: {
+      src: srcMatch[1],
+      alt: altMatch?.[1] || null,
+      assetId: null,
+      link: linkSettings,
+    },
   };
 }
 
+/** Extract href and target from an <a> tag string */
+function parseLinkAttrs(html: string): { href: string; target?: string | null } | null {
+  const hrefMatch = html.match(/<a\s[^>]*href=["']([^"']+)["']/i);
+  if (!hrefMatch) return null;
+  const targetMatch = html.match(/<a\s[^>]*target=["']([^"']+)["']/i);
+  return { href: hrefMatch[1], target: targetMatch?.[1] || null };
+}
+
 /**
- * Push paragraph content that may contain inline <img> tags.
+ * Push paragraph content that may contain <img> tags (standalone or wrapped in <a>).
  * Images are extracted as sibling richTextImage nodes so they are block-level.
  */
 function pushParagraphWithImages(innerHtml: string, content: TipTapNode[]): void {
-  const parts = innerHtml.split(/(<img\s[^>]*\/?>)/gi);
+  // Match: <a ...><img .../></a> | standalone <img .../>
+  const parts = innerHtml.split(/(<a\s[^>]*>\s*<img\s[^>]*\/?>\s*<\/a>|<img\s[^>]*\/?>)/gi);
   for (const part of parts) {
     if (!part.trim()) continue;
     if (/^<img\s/i.test(part)) {
       const imgNode = parseImgTag(part);
+      if (imgNode) content.push(imgNode);
+    } else if (/^<a\s[^>]*>\s*<img/i.test(part)) {
+      const link = parseLinkAttrs(part);
+      const imgNode = parseImgTag(part, link ?? undefined);
       if (imgNode) content.push(imgNode);
     } else {
       const inlineNodes = parseInlineNodes(part);
